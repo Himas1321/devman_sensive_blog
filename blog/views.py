@@ -43,7 +43,8 @@ def index(request):
     most_popular_posts = (
         Post.objects
         .popular()
-        .prefetch_related('author')[:5]
+        .prefetch_related('author')
+        .prefetch_related('tags')[:5]
         .fetch_with_comments_count()
     )
 
@@ -57,6 +58,7 @@ def index(request):
         .filter(id__in=[post.id for post in most_fresh_posts])
         .annotate(comments_count=Count('comments'))
         .prefetch_related('author')
+        .prefetch_related('tags')
     )
 
     most_popular_tags = Tag.objects.popular()[:5]
