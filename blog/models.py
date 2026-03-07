@@ -3,6 +3,30 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from django.db.models import Count
 
+class PostQuerySet(models.QuerySet):
+
+    def popular(self):
+        return self.annotate(likes_count=Count('likes')).order_by('-likes_count')
+
+    def fetch_with_comments_count(self):
+        posts = list(self)
+
+        posts_ids = [post.id for post in posts]
+
+        comments_count = (
+            Post.objects
+            .filter(id__in=posts_ids)
+            .annotate(comments_count=Count('comments'))
+            .values_list('id', 'comments_count')
+        )
+
+        comments_by_id = dict(comments_count)
+
+        for post in posts:
+            post.comments_count = comments_by_id.get(post.id, 0)
+
+        return posts
+
 
 class TagQuerySet(models.QuerySet):
     def popular(self):
@@ -15,6 +39,8 @@ class Post(models.Model):
     slug = models.SlugField('Название в виде url', max_length=200)
     image = models.ImageField('Картинка')
     published_at = models.DateTimeField('Дата и время публикации')
+
+    objects = PostQuerySet.as_manager()
 
     author = models.ForeignKey(
         User,
