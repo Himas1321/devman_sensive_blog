@@ -9,28 +9,15 @@ class PostQuerySet(models.QuerySet):
         return self.annotate(likes_count=Count('likes')).order_by('-likes_count')
 
     def fetch_with_comments_count(self):
-        posts = list(self)
-
-        posts_ids = [post.id for post in posts]
-
-        comments_count = (
-            Post.objects
-            .filter(id__in=posts_ids)
-            .annotate(comments_count=Count('comments'))
-            .values_list('id', 'comments_count')
-        )
-
-        comments_by_id = dict(comments_count)
-
-        for post in posts:
-            post.comments_count = comments_by_id.get(post.id, 0)
-
-        return posts
+        return self.annotate(comments_count=Count('comments'))
 
 
 class TagQuerySet(models.QuerySet):
     def popular(self):
         return self.annotate(posts_count=Count('posts')).order_by('-posts_count')
+
+    def fetch_with_posts_count(self):
+        return self.annotate(posts_count=Count('posts'))
 
 
 class Post(models.Model):
@@ -39,8 +26,6 @@ class Post(models.Model):
     slug = models.SlugField('Название в виде url', max_length=200)
     image = models.ImageField('Картинка')
     published_at = models.DateTimeField('Дата и время публикации')
-
-    objects = PostQuerySet.as_manager()
 
     author = models.ForeignKey(
         User,
@@ -57,16 +42,18 @@ class Post(models.Model):
         related_name='posts',
         verbose_name='Теги')
 
-    def __str__(self):
-        return self.title
-
-    def get_absolute_url(self):
-        return reverse('post_detail', args={'slug': self.slug})
+    objects = PostQuerySet.as_manager()
 
     class Meta:
         ordering = ['-published_at']
         verbose_name = 'пост'
         verbose_name_plural = 'посты'
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('post_detail', args={'slug': self.slug})
 
 
 class Tag(models.Model):
